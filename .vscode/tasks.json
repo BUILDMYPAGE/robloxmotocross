@@ -1,0 +1,160 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Setup Roblox Project Structure",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "Setting up Roblox Motocross Racing Game project structure..."
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Validate Lua Scripts",
+            "type": "shell",
+            "command": "find",
+            "args": [
+                "src",
+                "-name",
+                "*.lua",
+                "-exec",
+                "echo",
+                "Checking: {}",
+                ";"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Count Lines of Code",
+            "type": "shell",
+            "command": "find",
+            "args": [
+                "src",
+                "-name",
+                "*.lua",
+                "-exec",
+                "wc",
+                "-l",
+                "{}",
+                "+"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Create Roblox Studio Instructions",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "\\n🏍️ ROBLOX MOTOCROSS RACING GAME SETUP\\n\\nTo set up this project in Roblox Studio:\\n\\n1. SERVER SCRIPTS (ServerScriptService):\\n   - Place src/server/Main.server.lua as Main.server.lua\\n   - Create folder 'server' and place:\\n     * src/server/GameManager.lua\\n     * src/server/DirtBike.lua\\n     * src/server/RaceTrack.lua\\n\\n2. CLIENT SCRIPTS (StarterPlayerScripts):\\n   - Place src/client/Main.client.lua as Main.client.lua\\n   - Create folder 'client' and place:\\n     * src/client/InputController.lua\\n     * src/client/UIManager.lua\\n\\n3. SHARED SCRIPTS (ReplicatedStorage):\\n   - Create folder 'shared' and place:\\n     * src/shared/GameConfig.lua\\n\\n4. START THE GAME:\\n   - Run the server to initialize\\n   - Use 'Start Server' for multiplayer testing\\n   - Press R in game to spawn bikes\\n\\nEnjoy racing! 🏁"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Show Project Structure",
+            "type": "shell",
+            "command": "tree",
+            "args": [
+                "-I",
+                "node_modules|.git",
+                "."
+            ],
+            "options": {
+                "shell": {
+                    "executable": "/bin/bash",
+                    "args": ["-c"]
+                }
+            },
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "List All Lua Files",
+            "type": "shell",
+            "command": "find",
+            "args": [
+                "src",
+                "-name",
+                "*.lua",
+                "-type",
+                "f"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate File Summary",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "echo '🏍️ ROBLOX MOTOCROSS RACING GAME - FILE SUMMARY'; echo ''; echo 'SERVER SCRIPTS:'; find src/server -name '*.lua' -exec echo '  📄 {}' \\; 2>/dev/null || echo '  No server files found'; echo ''; echo 'CLIENT SCRIPTS:'; find src/client -name '*.lua' -exec echo '  📱 {}' \\; 2>/dev/null || echo '  No client files found'; echo ''; echo 'SHARED SCRIPTS:'; find src/shared -name '*.lua' -exec echo '  🔄 {}' \\; 2>/dev/null || echo '  No shared files found'; echo ''; echo 'TOTAL LUA FILES:'; find src -name '*.lua' | wc -l; echo ''; echo 'TOTAL LINES OF CODE:'; find src -name '*.lua' -exec cat {} \\; 2>/dev/null | wc -l"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

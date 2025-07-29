@@ -1,0 +1,60 @@
+{
+  "name": "RobloxMotocross",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "TestServer": {
+        "$path": "TestServer.server.lua"
+      },
+      "SimpleServer": {
+        "$path": "SimpleServer.server.lua"
+      },
+      "Main": {
+        "$path": "src/server/Main.server.lua"
+      },
+      "server": {
+        "$className": "Folder",
+        "GameManager": {
+          "$path": "src/server/GameManager.lua"
+        },
+        "DirtBike": {
+          "$path": "src/server/DirtBike.lua"
+        },
+        "RaceTrack": {
+          "$path": "src/server/RaceTrack.lua"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "SimpleClient": {
+          "$path": "SimpleClient.client.lua"
+        },
+        "Main": {
+          "$path": "src/client/Main.client.lua"
+        },
+        "client": {
+          "$className": "Folder",
+          "InputController": {
+            "$path": "src/client/InputController.lua"
+          },
+          "UIManager": {
+            "$path": "src/client/UIManager.lua"
+          }
+        }
+      }
+    },
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "GameConfig": {
+          "$path": "src/shared/GameConfig.lua"
+        }
+      }
+    }
+  }
+}
