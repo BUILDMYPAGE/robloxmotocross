@@ -169,12 +169,41 @@ end
 function SimpleBikeControls:updateInputs()
     if not bikeControlEvent then return end
     
-    -- Send input to server (with throttling)
-    if tick() - (self.lastInputSent or 0) > 0.033 then -- ~30 FPS
-        bikeControlEvent:FireServer("throttle", self.inputValues.throttle)
-        bikeControlEvent:FireServer("brake", self.inputValues.brake)
-        bikeControlEvent:FireServer("steer", self.inputValues.steer)
-        self.lastInputSent = tick()
+    -- More aggressive throttling to prevent queue overflow
+    local currentTime = tick()
+    if currentTime - (self.lastInputSent or 0) < 0.1 then -- Only send every 0.1 seconds (10 FPS)
+        return
+    end
+    
+    -- Only send if there are actual changes to prevent spam
+    local newValues = {
+        throttle = self.inputValues.throttle,
+        brake = self.inputValues.brake,
+        steer = self.inputValues.steer
+    }
+    
+    local lastValues = self.lastSentValues or {throttle = 0, brake = 0, steer = 0}
+    
+    -- Check if any values changed
+    local hasChanges = false
+    for key, value in pairs(newValues) do
+        if math.abs(value - (lastValues[key] or 0)) > 0.01 then
+            hasChanges = true
+            break
+        end
+    end
+    
+    -- Only send if there are changes or if it's been a while since last update
+    if hasChanges or (currentTime - (self.lastInputSent or 0)) > 1.0 then
+        -- Send all inputs in one event to reduce network traffic
+        bikeControlEvent:FireServer("allInputs", {
+            throttle = newValues.throttle,
+            brake = newValues.brake,
+            steer = newValues.steer
+        })
+        
+        self.lastInputSent = currentTime
+        self.lastSentValues = newValues
     end
 end
 

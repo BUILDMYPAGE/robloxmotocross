@@ -327,13 +327,21 @@ bikeControlEvent.OnServerEvent:Connect(function(player, inputType, inputValue)
         playerInputs[player.Name] = {throttle = 0, brake = 0, steer = 0}
     end
     
-    -- Update the specific input
-    if inputType == "throttle" then
-        playerInputs[player.Name].throttle = inputValue
-    elseif inputType == "brake" then
-        playerInputs[player.Name].brake = inputValue
-    elseif inputType == "steer" then
-        playerInputs[player.Name].steer = inputValue
+    -- Handle combined input format (new) or individual inputs (legacy)
+    if inputType == "allInputs" and type(inputValue) == "table" then
+        -- New combined format - more efficient
+        playerInputs[player.Name].throttle = inputValue.throttle or 0
+        playerInputs[player.Name].brake = inputValue.brake or 0
+        playerInputs[player.Name].steer = inputValue.steer or 0
+    else
+        -- Legacy individual input format
+        if inputType == "throttle" then
+            playerInputs[player.Name].throttle = inputValue
+        elseif inputType == "brake" then
+            playerInputs[player.Name].brake = inputValue
+        elseif inputType == "steer" then
+            playerInputs[player.Name].steer = inputValue
+        end
     end
     
     -- Apply controls to the bike
@@ -343,8 +351,8 @@ bikeControlEvent.OnServerEvent:Connect(function(player, inputType, inputValue)
         seat.Throttle = throttleValue
         seat.Steer = playerInputs[player.Name].steer
         
-        -- Debug significant movements only
-        if math.abs(throttleValue) > 0.3 or math.abs(playerInputs[player.Name].steer) > 0.3 then
+        -- Debug significant movements only (and only for combined inputs to reduce spam)
+        if inputType == "allInputs" and (math.abs(throttleValue) > 0.3 or math.abs(playerInputs[player.Name].steer) > 0.3) then
             print("🏍️ " .. player.Name .. " controlling YELLOW backup bike")
         end
     end
