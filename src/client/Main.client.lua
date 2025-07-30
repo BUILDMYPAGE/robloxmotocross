@@ -164,6 +164,14 @@ function SimpleBikeControls:handleInput(input, isPressed)
     else
         self.inputValues.steer = 0
     end
+    
+    -- Debug output for WASD keys
+    if keyName == "W" or keyName == "A" or keyName == "S" or keyName == "D" then
+        print("🎯 WASD INPUT - " .. keyName .. " " .. (isPressed and "PRESSED" or "RELEASED"))
+        print("🎯 Current values: Throttle=" .. self.inputValues.throttle .. 
+              ", Brake=" .. self.inputValues.brake .. 
+              ", Steer=" .. self.inputValues.steer)
+    end
 end
 
 function SimpleBikeControls:updateInputs()
@@ -201,6 +209,11 @@ function SimpleBikeControls:updateInputs()
             brake = newValues.brake,
             steer = newValues.steer
         })
+        
+        -- Debug output for sent inputs
+        print("📡 SENDING INPUTS: T=" .. newValues.throttle .. 
+              ", B=" .. newValues.brake .. 
+              ", S=" .. newValues.steer)
         
         self.lastInputSent = currentTime
         self.lastSentValues = newValues

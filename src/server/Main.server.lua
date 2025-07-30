@@ -208,6 +208,9 @@ local function initializeGame()
     local function setupRemoteEvents()
         -- Basic bike control handler (fallback if GameManager doesn't load)
         bikeControlEvent.OnServerEvent:Connect(function(player, inputType, inputValue)
+            -- Debug: Log all incoming control events
+            print("🎮 SERVER RECEIVED INPUT from " .. player.Name .. ": " .. tostring(inputType) .. " = " .. tostring(inputValue))
+            
             -- Find the player's bike
             local bike = playerBikes[player.Name] or nil
             if not bike or not bike.Parent then
@@ -222,7 +225,8 @@ local function initializeGame()
             end
             
             if not bike then
-                return -- No bike found, silently ignore
+                print("❌ " .. player.Name .. " - No bike found for input: " .. tostring(inputType))
+                return -- No bike found
             end
             
             -- Initialize input state if needed
@@ -249,13 +253,55 @@ local function initializeGame()
             
             -- Apply controls to the bike
             local seat = bike:FindFirstChild("VehicleSeat")
-            if seat and seat:IsA("VehicleSeat") then
+            local frame = bike:FindFirstChild("Frame")
+            
+            if seat and seat:IsA("VehicleSeat") and frame then
                 local throttleValue = playerInputs[player.Name].throttle - playerInputs[player.Name].brake
                 local steerValue = playerInputs[player.Name].steer
                 
-                -- Apply input with some smoothing
+                -- Apply input to VehicleSeat (primary method)
                 seat.Throttle = throttleValue
                 seat.Steer = steerValue
+                
+                -- Backup control system using BodyVelocity (if VehicleSeat fails)
+                local bodyVelocity = frame:FindFirstChild("BodyVelocity")
+                local bodyAngularVelocity = frame:FindFirstChild("BodyAngularVelocity")
+                
+                if bodyVelocity and bodyAngularVelocity then
+                    -- Manual physics control as backup
+                    local forwardDirection = frame.CFrame.LookVector
+                    local speed = math.abs(throttleValue) * 50  -- Max speed 50
+                    
+                    if math.abs(throttleValue) > 0.1 then
+                        -- Apply forward/backward movement
+                        bodyVelocity.Velocity = forwardDirection * speed * (throttleValue > 0 and 1 or -1)
+                    else
+                        -- Stop movement
+                        bodyVelocity.Velocity = Vector3.new(0, bodyVelocity.Velocity.Y, 0)
+                    end
+                    
+                    if math.abs(steerValue) > 0.1 then
+                        -- Apply steering rotation
+                        bodyAngularVelocity.AngularVelocity = Vector3.new(0, steerValue * 3, 0)
+                    else
+                        -- Stop rotation
+                        bodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
+                    end
+                end
+                
+                -- Debug output for applied controls
+                if math.abs(throttleValue) > 0.1 or math.abs(steerValue) > 0.1 then
+                    print("🎯 APPLYING TO BIKE " .. player.Name .. ": Throttle=" .. string.format("%.2f", throttleValue) .. 
+                          ", Steer=" .. string.format("%.2f", steerValue))
+                    
+                    -- Check if player is sitting in the seat
+                    local occupant = seat.Occupant
+                    if occupant then
+                        print("✅ Player is sitting in VehicleSeat - using VehicleSeat controls")
+                    else
+                        print("⚠️ Player NOT sitting - using backup BodyVelocity controls")
+                    end
+                end
                 
                 -- Additional stabilization when turning at speed
                 local frame = bike:FindFirstChild("Frame")
@@ -543,13 +589,13 @@ local function initializeGame()
             
             -- Add stabilization system using BodyVelocity (prevents tipping)
             local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)  -- Only Y-axis stabilization
+            bodyVelocity.MaxForce = Vector3.new(8000, math.huge, 8000)  -- Allow X/Z movement, Y stabilization
             bodyVelocity.Velocity = Vector3.new(0, 0, 0)
             bodyVelocity.Parent = frame
             
             -- Add angular stabilization (prevents excessive rolling)
             local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
-            bodyAngularVelocity.MaxTorque = Vector3.new(8000, 0, 8000)  -- X and Z axis stabilization
+            bodyAngularVelocity.MaxTorque = Vector3.new(8000, 8000, 8000)  -- Full rotation control
             bodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
             bodyAngularVelocity.Parent = frame
             
@@ -568,22 +614,79 @@ local function initializeGame()
             -- Auto-sit the player on the realistic motocross bike
             spawn(function()
                 wait(1)
-                if player.Character and player.Character:FindFirstChild("Humanoid") and bike.Parent then
-                    local vehicleSeat = bike:FindFirstChild("VehicleSeat")
-                    if vehicleSeat then
-                        -- Ensure the seat is properly positioned for straddling
-                        vehicleSeat.Disabled = false
+                
+                -- Validate everything exists and is in workspace
+                if not player or not player.Parent then
+                    print("❌ Player not in game")
+                    return
+                end
+                
+                if not player.Character or not player.Character.Parent then
+                    print("❌ Player character not in workspace")
+                    return
+                end
+                
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if not humanoid or not humanoid.Parent then
+                    print("❌ Humanoid not found or not in workspace")
+                    return
+                end
+                
+                if not bike or not bike.Parent or bike.Parent ~= workspace then
+                    print("❌ Bike not in workspace")
+                    return
+                end
+                
+                local vehicleSeat = bike:FindFirstChild("VehicleSeat")
+                if not vehicleSeat or not vehicleSeat.Parent then
+                    print("❌ VehicleSeat not found or not in workspace")
+                    return
+                end
+                
+                -- Ensure the seat is properly configured
+                vehicleSeat.Disabled = false
+                vehicleSeat.CanCollide = false
+                
+                print("🪑 Attempting to sit " .. player.Name .. " on motocross bike...")
+                
+                -- Try sitting with proper error handling
+                local success, errorMessage = pcall(function()
+                    vehicleSeat:Sit(humanoid)
+                end)
+                
+                if not success then
+                    print("❌ Failed to sit " .. player.Name .. ": " .. tostring(errorMessage))
+                    return
+                end
+                
+                -- Wait and check if sitting worked
+                wait(0.5)
+                if vehicleSeat.Occupant == humanoid then
+                    print("✅ " .. player.Name .. " is now sitting in the VehicleSeat! Use WASD!")
+                else
+                    print("❌ Sitting attempt failed - trying alternative method...")
+                    
+                    -- Alternative method: Move player closer and try again
+                    local seatPosition = vehicleSeat.Position
+                    if player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = CFrame.new(seatPosition + Vector3.new(0, 3, 0))
+                        wait(0.2)
                         
-                        -- Force the player to sit on the bike
-                        vehicleSeat:Sit(player.Character.Humanoid)
+                        -- Try again after repositioning
+                        local success2, errorMessage2 = pcall(function()
+                            vehicleSeat:Sit(humanoid)
+                        end)
                         
-                        print("✅ " .. player.Name .. " is now straddling the motocross bike! Use WASD!")
-                        
-                        -- Additional check to ensure proper seating
-                        wait(0.5)
-                        if not player.Character.Humanoid.Sit then
-                            print("🔄 Retrying seat positioning for " .. player.Name)
-                            vehicleSeat:Sit(player.Character.Humanoid)
+                        if success2 then
+                            wait(0.3)
+                            if vehicleSeat.Occupant == humanoid then
+                                print("✅ " .. player.Name .. " is now sitting after repositioning!")
+                            else
+                                print("❌ Still failed to sit " .. player.Name .. " - manual sitting required")
+                                print("� Try typing /sit in chat")
+                            end
+                        else
+                            print("❌ Second sitting attempt failed: " .. tostring(errorMessage2))
                         end
                     end
                 end
