@@ -209,11 +209,15 @@ local function initializeGame()
         -- Basic bike control handler (fallback if GameManager doesn't load)
         bikeControlEvent.OnServerEvent:Connect(function(player, inputType, inputValue)
             -- Find the player's bike
-            local bike = nil
-            for _, obj in pairs(workspace:GetChildren()) do
-                if obj.Name == player.Name .. "_MainBike" and obj:IsA("Model") then
-                    bike = obj
-                    break
+            local bike = playerBikes[player.Name] or nil
+            if not bike or not bike.Parent then
+                -- Try to find bike by name if not in cache
+                for _, obj in pairs(workspace:GetChildren()) do
+                    if obj.Name == player.Name .. "_MainBike" and obj:IsA("Model") then
+                        bike = obj
+                        playerBikes[player.Name] = bike
+                        break
+                    end
                 end
             end
             
@@ -247,12 +251,32 @@ local function initializeGame()
             local seat = bike:FindFirstChild("VehicleSeat")
             if seat and seat:IsA("VehicleSeat") then
                 local throttleValue = playerInputs[player.Name].throttle - playerInputs[player.Name].brake
+                local steerValue = playerInputs[player.Name].steer
+                
+                -- Apply input with some smoothing
                 seat.Throttle = throttleValue
-                seat.Steer = playerInputs[player.Name].steer
+                seat.Steer = steerValue
+                
+                -- Additional stabilization when turning at speed
+                local frame = bike:FindFirstChild("Frame")
+                if frame then
+                    local bodyAngularVelocity = frame:FindFirstChild("BodyAngularVelocity")
+                    if bodyAngularVelocity and math.abs(steerValue) > 0.1 then
+                        -- Add slight counter-lean when turning for stability
+                        local speed = seat.AssemblyLinearVelocity.Magnitude
+                        if speed > 20 then
+                            bodyAngularVelocity.AngularVelocity = Vector3.new(
+                                0,
+                                0,
+                                -steerValue * 0.3  -- Counter-lean effect
+                            )
+                        end
+                    end
+                end
                 
                 -- Debug significant movements only (reduce spam)
-                if inputType == "allInputs" and (math.abs(throttleValue) > 0.3 or math.abs(playerInputs[player.Name].steer) > 0.3) then
-                    print("🏍️ " .. player.Name .. " controlling motocross bike: Throttle=" .. string.format("%.1f", throttleValue) .. ", Steer=" .. string.format("%.1f", playerInputs[player.Name].steer))
+                if inputType == "allInputs" and (math.abs(throttleValue) > 0.3 or math.abs(steerValue) > 0.3) then
+                    print("🏍️ " .. player.Name .. " controlling motocross bike: Throttle=" .. string.format("%.1f", throttleValue) .. ", Steer=" .. string.format("%.1f", steerValue))
                 end
             end
         end)
@@ -281,7 +305,7 @@ local function initializeGame()
             
             local spawnPos = player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 10)
             
-            -- Create main frame (chassis)
+            -- Create main frame (chassis) - heavier and more stable
             local frame = Instance.new("Part")
             frame.Name = "Frame"
             frame.Size = Vector3.new(6, 0.5, 1.5)
@@ -289,6 +313,15 @@ local function initializeGame()
             frame.BrickColor = BrickColor.new("Really black")
             frame.Material = Enum.Material.Metal
             frame.CanCollide = false
+            
+            -- Add mass and physics properties for stability
+            frame.CustomPhysicalProperties = PhysicalProperties.new(
+                2.0,   -- Density (heavier for stability)
+                0.7,   -- Friction
+                0.05,  -- Elasticity (very low bounce)
+                1,     -- FrictionWeight
+                1      -- ElasticityWeight
+            )
             frame.Parent = bike
             
             -- Create vehicle seat (rider position) - positioned for straddling
@@ -304,11 +337,20 @@ local function initializeGame()
             -- Rotate seat slightly forward for motocross position
             seat.CFrame = CFrame.new(seat.Position) * CFrame.Angles(math.rad(-5), 0, 0)
             
-            -- Motocross bike physics settings
-            seat.MaxSpeed = 100
-            seat.Torque = 15000
-            seat.TurnSpeed = 35
+            -- Motocross bike physics settings - optimized for stability and control
+            seat.MaxSpeed = 80        -- Reduced for better control
+            seat.Torque = 25000       -- Increased for better acceleration
+            seat.TurnSpeed = 25       -- Moderate turning for stability
             seat.HeadsUpDisplay = false
+            
+            -- Add custom physical properties for better physics
+            seat.CustomPhysicalProperties = PhysicalProperties.new(
+                0.3,   -- Density (lighter for better response)
+                0.6,   -- Friction
+                0.1,   -- Elasticity (low bounce)
+                1,     -- FrictionWeight
+                1      -- ElasticityWeight
+            )
             seat.Parent = bike
             
             -- Create engine block
@@ -390,7 +432,7 @@ local function initializeGame()
             exhaust.CanCollide = false
             exhaust.Parent = bike
             
-            -- Create realistic wheels with better proportions
+            -- Create realistic wheels with better proportions and physics
             local function createMotocrossWheel(name, position, size, isFront)
                 -- Main wheel (tire)
                 local wheel = Instance.new("Part")
@@ -401,6 +443,14 @@ local function initializeGame()
                 wheel.BrickColor = BrickColor.new("Really black")
                 wheel.Material = Enum.Material.Rubber
                 wheel.CanCollide = true
+                wheel.CanTouch = true
+                wheel.CustomPhysicalProperties = PhysicalProperties.new(
+                    0.7,  -- Density
+                    0.8,  -- Friction (high for traction)
+                    0.2,  -- Elasticity (low bounce)
+                    1,    -- FrictionWeight
+                    1     -- ElasticityWeight
+                )
                 wheel.Parent = bike
                 
                 -- Rim
@@ -436,11 +486,29 @@ local function initializeGame()
                 spokesWeld.Part1 = spokes
                 spokesWeld.Parent = bike
                 
-                -- Weld wheel to frame
-                local frameWeld = Instance.new("WeldConstraint")
-                frameWeld.Part0 = frame
-                frameWeld.Part1 = wheel
-                frameWeld.Parent = bike
+                -- Create attachment points for suspension
+                local wheelAttachment = Instance.new("Attachment")
+                wheelAttachment.Name = name .. "Attachment"
+                wheelAttachment.Parent = wheel
+                
+                local frameAttachment = Instance.new("Attachment")
+                frameAttachment.Name = name .. "FrameAttachment"
+                frameAttachment.Position = Vector3.new(
+                    position.X - spawnPos.X,
+                    0,
+                    position.Z - spawnPos.Z
+                )
+                frameAttachment.Parent = frame
+                
+                -- Create suspension constraint (spring-damper system)
+                local suspension = Instance.new("SpringConstraint")
+                suspension.Name = name .. "Suspension"
+                suspension.Attachment0 = frameAttachment
+                suspension.Attachment1 = wheelAttachment
+                suspension.FreeLength = 2  -- Natural spring length
+                suspension.Stiffness = isFront and 8000 or 12000  -- Front softer, rear stiffer
+                suspension.Damping = isFront and 800 or 1200     -- Front softer, rear stiffer
+                suspension.Parent = bike
                 
                 return wheel
             end
@@ -473,7 +541,29 @@ local function initializeGame()
             -- Set primary part to the frame for better physics
             bike.PrimaryPart = frame
             
+            -- Add stabilization system using BodyVelocity (prevents tipping)
+            local bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)  -- Only Y-axis stabilization
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            bodyVelocity.Parent = frame
+            
+            -- Add angular stabilization (prevents excessive rolling)
+            local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+            bodyAngularVelocity.MaxTorque = Vector3.new(8000, 0, 8000)  -- X and Z axis stabilization
+            bodyAngularVelocity.AngularVelocity = Vector3.new(0, 0, 0)
+            bodyAngularVelocity.Parent = frame
+            
+            -- Add center of mass adjustment for better balance
+            local centerOfMass = Instance.new("SpecialMesh")
+            centerOfMass.MeshType = Enum.MeshType.Brick
+            centerOfMass.Scale = Vector3.new(1, 1, 1)
+            centerOfMass.Offset = Vector3.new(0, -0.8, 0)  -- Lower center of mass
+            centerOfMass.Parent = frame
+            
             print("✅ Created realistic motocross bike for " .. player.Name .. " via Main server")
+            
+            -- Store bike reference for physics updates
+            playerBikes[player.Name] = bike
             
             -- Auto-sit the player on the realistic motocross bike
             spawn(function()
@@ -601,6 +691,7 @@ Players.PlayerRemoving:Connect(function(player)
     
     -- Clean up player data
     playerInputs[player.Name] = nil
+    playerBikes[player.Name] = nil
 end)
 
 -- Start game initialization
@@ -609,7 +700,7 @@ spawn(function()
     initializeGame()
 end)
 
--- Performance monitoring
+-- Performance monitoring and bike stabilization
 local lastMemoryCheck = tick()
 local function monitorPerformance()
     local currentTime = tick()
@@ -627,6 +718,50 @@ local function monitorPerformance()
         if GameConfig.Debug and GameConfig.Debug.LogLevel == "DEBUG" then
             print("📊 Server Status - Players: " .. #Players:GetPlayers() .. 
                   ", Memory: " .. math.floor(memoryUsage) .. "MB")
+        end
+    end
+    
+    -- Bike stabilization system
+    for playerName, bike in pairs(playerBikes) do
+        if bike and bike.Parent then
+            local frame = bike:FindFirstChild("Frame")
+            local seat = bike:FindFirstChild("VehicleSeat")
+            
+            if frame and seat then
+                -- Get current rotation
+                local rotation = frame.CFrame.Rotation
+                local rotationAngles = {rotation:ToEulerAnglesXYZ()}
+                
+                -- Check if bike is tilting too much (more than 45 degrees)
+                local tiltX = math.abs(rotationAngles[1])
+                local tiltZ = math.abs(rotationAngles[3])
+                
+                if tiltX > math.rad(45) or tiltZ > math.rad(45) then
+                    -- Apply corrective force
+                    local bodyAngularVelocity = frame:FindFirstChild("BodyAngularVelocity")
+                    if bodyAngularVelocity then
+                        bodyAngularVelocity.AngularVelocity = Vector3.new(
+                            -rotationAngles[1] * 2,  -- Counter-rotate X
+                            0,
+                            -rotationAngles[3] * 2   -- Counter-rotate Z
+                        )
+                    end
+                end
+                
+                -- Ensure bike stays above ground level
+                if frame.Position.Y < -50 then
+                    -- Bike fell too far, respawn it
+                    local player = Players:FindFirstChild(playerName)
+                    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        local respawnPos = player.Character.HumanoidRootPart.Position + Vector3.new(0, 10, 10)
+                        bike:SetPrimaryPartCFrame(CFrame.new(respawnPos))
+                        print("🔄 Respawned " .. playerName .. "'s bike (fell too far)")
+                    end
+                end
+            end
+        else
+            -- Clean up invalid bike reference
+            playerBikes[playerName] = nil
         end
     end
 end
