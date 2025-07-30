@@ -184,7 +184,22 @@ SimpleUI.__index = SimpleUI
 
 function SimpleUI.new()
     local self = setmetatable({}, SimpleUI)
+    
+    -- Ensure all required methods exist
+    self.updateStatus = SimpleUI.updateStatus
+    self.showMessage = SimpleUI.showMessage
+    self.createBasicUI = SimpleUI.createBasicUI
+    
     self:createBasicUI()
+    
+    -- Verify the method exists after creation
+    if not self.updateStatus then
+        print("❌ updateStatus method missing after creation!")
+        self.updateStatus = function(self, status)
+            print("🔧 FALLBACK updateStatus called: " .. tostring(status))
+        end
+    end
+    
     return self
 end
 
@@ -320,18 +335,16 @@ local function initializeClient()
     local UIManager = nil
     
     -- Check if we have the full module structure
-    local clientFolder = script.Parent:FindFirstChild("client")
-    if clientFolder then
-        local inputScript = clientFolder:FindFirstChild("InputController")
-        local uiScript = clientFolder:FindFirstChild("UIManager")
-        
-        if inputScript then
-            InputController = safeRequire(inputScript, "InputController")
-        end
-        
-        if uiScript then
-            UIManager = safeRequire(uiScript, "UIManager")
-        end
+    -- Look for modules in the same folder as this script
+    local inputScript = script.Parent:FindFirstChild("InputController")
+    local uiScript = script.Parent:FindFirstChild("UIManager")
+    
+    if inputScript then
+        InputController = safeRequire(inputScript, "InputController")
+    end
+    
+    if uiScript then
+        UIManager = safeRequire(uiScript, "UIManager")
     end
     
     -- Initialize input controller
@@ -348,8 +361,37 @@ local function initializeClient()
         clientState.uiManager = UIManager.new()
         print("✅ Advanced UI manager initialized")
     else
+        print("⚠️ UIManager module not found, creating SimpleUI...")
         clientState.uiManager = SimpleUI.new()
         print("⚠️ Using basic UI manager")
+        
+        -- Debug the UI manager object
+        if clientState.uiManager then
+            print("🔍 UI Manager created successfully")
+            print("🔍 UI Manager type:", typeof(clientState.uiManager))
+            print("🔍 updateStatus method exists:", clientState.uiManager.updateStatus and "YES" or "NO")
+            
+            -- List all methods available
+            print("🔍 Available methods:")
+            for key, value in pairs(clientState.uiManager) do
+                if type(value) == "function" then
+                    print("   - " .. key)
+                end
+            end
+            
+            -- Add updateStatus method if it's missing
+            if not clientState.uiManager.updateStatus then
+                print("🔧 Adding missing updateStatus method...")
+                clientState.uiManager.updateStatus = function(self, status)
+                    print("📢 STATUS UPDATE: " .. tostring(status))
+                    if self.statusLabel then
+                        self.statusLabel.Text = "🏁 GAME STATUS\n" .. status
+                    end
+                end
+            end
+        else
+            print("❌ Failed to create UI Manager!")
+        end
     end
     
     -- Setup server event handlers
@@ -371,7 +413,11 @@ local function initializeClient()
     end
     
     clientState.gameConnected = true
-    clientState.uiManager:updateStatus("Connected! Press R to spawn bike")
+    if clientState.uiManager and clientState.uiManager.updateStatus then
+        clientState.uiManager:updateStatus("Connected! Press R to spawn bike")
+    else
+        print("⚠️ UI Manager updateStatus method not available")
+    end
     
     print("✅ Client initialization complete!")
 end
@@ -393,7 +439,11 @@ function handleServerMessage(data)
         else
             status = status .. "\nBasic mode only"
         end
-        clientState.uiManager:updateStatus(status)
+        if clientState.uiManager and clientState.uiManager.updateStatus then
+            clientState.uiManager:updateStatus(status)
+        else
+            print("⚠️ UI Manager updateStatus method not available for server ready message")
+        end
     end
 end
 
@@ -405,8 +455,10 @@ player.CharacterAdded:Connect(function(character)
     clientState.bikeSpawned = false
     
     -- Update UI
-    if clientState.uiManager then
+    if clientState.uiManager and clientState.uiManager.updateStatus then
         clientState.uiManager:updateStatus("Character ready! Press R to spawn bike")
+    else
+        print("⚠️ UI Manager updateStatus method not available for character spawn")
     end
 end)
 

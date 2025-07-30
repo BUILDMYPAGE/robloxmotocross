@@ -1,10 +1,8 @@
--- EMERGENCY DEBUG SERVER
--- This will help us figure out why nothing is spawning
+-- DISABLED - Main.server.lua now handles bike spawning
+-- print("🚫 TestServer DISABLED - Main.server.lua handles spawning now")
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-print("🚨 EMERGENCY DEBUG SERVER STARTED")
+-- All code below is disabled to prevent conflicts
+--[[
 
 -- Player bike storage for input handling
 local playerBikes = {}
@@ -236,3 +234,4 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 print("🔍 DEBUG SERVER READY - Press R to see if events work")
+--]]

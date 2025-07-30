@@ -1,6 +1,6 @@
--- WorkingBikeSystem.server.lua
--- Complete working bike system - place this in ServerScriptService
--- Remove TestServer.server.lua and use this instead
+-- DISABLED - Main.server.lua now handles bike spawning
+-- print("🚫 WorkingBikeSystem DISABLED - Main.server.lua handles spawning now")
+return
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

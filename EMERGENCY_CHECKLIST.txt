@@ -1,0 +1,47 @@
+🚨 EMERGENCY BIKE FIX - STEP BY STEP CHECKLIST
+===============================================
+
+The problem: You have old scripts still running that are blocking the CleanPrototype!
+
+🔧 IMMEDIATE FIX (Do this now):
+
+□ 1. STOP the current game in Roblox Studio
+
+□ 2. Add FORCE_CLEAN_SETUP.server.lua to ServerScriptService
+   - This will disable all conflicting scripts
+
+□ 3. Make sure you have these TWO files in the right places:
+   ✅ CleanPrototype.server.lua → ServerScriptService
+   ✅ CleanPrototype.client.lua → StarterPlayerScripts
+   
+   IMPORTANT: Name them exactly "CleanPrototype" (remove .server.lua and .client.lua extensions)
+
+□ 4. RUN the game again
+
+□ 5. Look for this message in Output:
+   "🏁 CLEAN MOTOCROSS PROTOTYPE STARTING..."
+   
+   If you DON'T see this message, the CleanPrototype isn't running!
+
+□ 6. Once you see the startup message, press R to spawn bike
+
+□ 7. Use WASD to drive
+
+🚨 TROUBLESHOOTING:
+
+❌ If you see "TestServer" or "Main" messages:
+   → Old scripts are still running - use FORCE_CLEAN_SETUP again
+
+❌ If bike doesn't spawn:
+   → Check that you see "🏍️ Spawn request from [YourName]" in Output
+
+❌ If no startup message appears:
+   → CleanPrototype.server.lua is not in ServerScriptService or is disabled
+
+✅ SUCCESS LOOKS LIKE:
+   - Only sees "🏁 CLEAN MOTOCROSS PROTOTYPE STARTING..."
+   - No "TestServer" or "Main" messages
+   - Bike spawns when pressing R
+   - WASD controls work
+
+The key is making sure ONLY the CleanPrototype scripts run!

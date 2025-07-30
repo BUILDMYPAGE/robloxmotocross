@@ -1,7 +1,7 @@
 -- SimpleServer.server.lua - DISABLED FOR TESTING
 -- Using TestServer.server.lua instead
 
-print("🚫 SimpleServer DISABLED - Using TestServer instead")
+-- print("🚫 SimpleServer DISABLED - Using TestServer instead")
 
 --[[ DISABLED CODE
 local Players = game:GetService("Players")
